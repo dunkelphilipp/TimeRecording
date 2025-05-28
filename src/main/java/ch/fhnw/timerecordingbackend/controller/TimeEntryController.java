@@ -39,7 +39,7 @@ public class TimeEntryController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("@timeEntryServiceImpl.isOwnerOfTimeEntry(#id) or hasAuthority('ADMIN')")
     public ResponseEntity<?> deleteTimeEntry(@PathVariable Long id) {
         timeEntryService.deleteTimeEntry(id);
         return ResponseEntity.ok().body(Map.of("message", "Eintrag gelöscht"));
@@ -61,7 +61,6 @@ public class TimeEntryController {
         return ResponseEntity.ok(entries);
     }
     @PostMapping("/start")
-
     public ResponseEntity<?> startTimeTracking(@RequestBody(required = false) Map<String, Long> body) {
         Long projectId = body != null ? body.get("projectId") : null;
         return ResponseEntity.ok(timeEntryService.startTimeTracking(projectId));
@@ -79,4 +78,4 @@ public class TimeEntryController {
         return ResponseEntity.ok().body(Map.of(
                 "message", "Zeiteintrag zu Projekt zugewiesen"));
     }
-} // ← WICHTIG: Diese schließende Klammer muss da sein!
+}
