@@ -44,19 +44,6 @@ public class TimeEntryServiceImpl implements TimeEntryService {
 
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
-    public boolean isOwnerOfTimeEntry(Long timeEntryId) {
-        User currentUser = securityUtils.getCurrentUser();
-        if (currentUser == null) {
-            // Sollte nicht passieren, wenn @PreAuthorize("isAuthenticated()") vorher prüft,
-            // aber als zusätzliche Sicherheit.
-            return false;
-        }
-        // Prüfen, ob der Zeiteintrag existiert und dem aktuellen Benutzer gehört
-        return timeEntryRepository.findById(timeEntryId)
-                .map(timeEntry -> timeEntry.getUser().getId().equals(currentUser.getId()))
-                .orElse(false); // Eintrag nicht gefunden, also kein Besitzer
-    }
-
     @Override
     public TimeEntryResponse createTimeEntry(TimeEntryRequest request) {
         User currentUser = getCurrentUserOrThrow();
@@ -201,7 +188,8 @@ public class TimeEntryServiceImpl implements TimeEntryService {
         LocalDate today = LocalDate.now();
         LocalTime now = LocalTime.now();
 
-         Optional<TimeEntry> existingEntry = timeEntryRepository.findByUserAndDate(currentUser, today);
+        // Prüfen, ob bereits ein aktiver Eintrag für heute existiert
+        Optional<TimeEntry> existingEntry = timeEntryRepository.findByUserAndDate(currentUser, today);
         TimeEntry timeEntry;
 
         if (existingEntry.isPresent()) {
