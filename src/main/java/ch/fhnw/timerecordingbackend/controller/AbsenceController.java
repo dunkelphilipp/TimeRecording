@@ -4,6 +4,8 @@ import ch.fhnw.timerecordingbackend.dto.absence.AbsenceRequest;
 import ch.fhnw.timerecordingbackend.dto.absence.AbsenceResponse;
 import ch.fhnw.timerecordingbackend.model.Absence;
 import ch.fhnw.timerecordingbackend.model.User;
+import ch.fhnw.timerecordingbackend.model.enums.AbsenceStatus;
+import ch.fhnw.timerecordingbackend.security.SecurityUtils;
 import ch.fhnw.timerecordingbackend.service.AbsenceService;
 import ch.fhnw.timerecordingbackend.service.UserService;
 import jakarta.validation.Valid;
@@ -16,6 +18,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -26,11 +29,13 @@ public class AbsenceController {
 
     private final AbsenceService absenceService;
     private final UserService userService;
+    private final SecurityUtils securityUtils;
 
     @Autowired
-    public AbsenceController(AbsenceService absenceService, UserService userService) {
+    public AbsenceController(AbsenceService absenceService, UserService userService, SecurityUtils securityUtils) {
         this.absenceService = absenceService;
         this.userService = userService;
+        this.securityUtils = securityUtils;
     }
 
     /**
@@ -75,8 +80,8 @@ public class AbsenceController {
                 .orElseThrow(() -> new IllegalArgumentException("Abwesenheit nicht gefunden mit ID: " + id));
 
         // Nur nicht genehmigte Abwesenheiten können bearbeitet werden
-        if (existingAbsence.isApproved()) {
-            throw new IllegalArgumentException("Genehmigte Abwesenheiten können nicht bearbeitet werden");
+        if (existingAbsence.getStatus() == AbsenceStatus.APPROVED || existingAbsence.getStatus() == AbsenceStatus.REJECTED) {
+            throw new IllegalArgumentException("Genehmigte oder abgelehnte Abwesenheiten können nicht direkt bearbeitet werden. Erstellen Sie ggf. einen neuen Antrag.");
         }
 
         // Aktualisierte Abwesenheit erstellen
@@ -123,7 +128,7 @@ public class AbsenceController {
      * GET /api/users/{userId}/absences
      */
     @GetMapping("/user/{userId}")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('MANAGER')")
     public ResponseEntity<Map<String, List<AbsenceResponse>>> getUserAbsences(@PathVariable Long userId) {
         User user = userService.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Benutzer nicht gefunden mit ID: " + userId));
@@ -144,7 +149,12 @@ public class AbsenceController {
     @GetMapping("/pending")
     @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('MANAGER')")
     public ResponseEntity<Map<String, List<AbsenceResponse>>> getPendingAbsences() {
-        List<Absence> pendingAbsences = absenceService.findPendingAbsences();
+        User currentUser = securityUtils.getCurrentUser();
+        if (currentUser == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("absences", Collections.emptyList()));
+        }
+        List<Absence> pendingAbsences = absenceService.findPendingAbsences(currentUser);
 
         List<AbsenceResponse> responses = pendingAbsences.stream()
                 .map(this::convertToAbsenceResponse)
@@ -292,7 +302,7 @@ public class AbsenceController {
         response.setStartDate(absence.getStartDate());
         response.setEndDate(absence.getEndDate());
         response.setType(absence.getType());
-        response.setApproved(absence.isApproved());
+        response.setStatus(absence.getStatus());
         response.setCreatedAt(absence.getCreatedAt());
         response.setUpdatedAt(absence.getUpdatedAt());
 

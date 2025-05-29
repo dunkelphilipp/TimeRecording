@@ -246,20 +246,96 @@ function formatAbsencesTable(absences) {
     let html = '<table class="data-table"><thead><tr><th>Typ</th><th>Von</th><th>Bis</th><th>Tage</th><th>Status</th><th>Genehmiger</th><th>Antragsteller</th></tr></thead><tbody>';
     absences.forEach(absence => {
         const typeLabels = {
+            'VACATION': 'Urlaub',
+            'ILLNESS': 'Krankheit',
+            'HOME_OFFICE': 'Home Office',
+            'TRAINING': 'Fortbildung',
+            'PUBLIC_HOLIDAY': 'Feiertag',
+            'UNPAID_LEAVE': 'Unbezahlter Urlaub',
+            'SPECIAL_LEAVE': 'Sonderurlaub',
+            'OTHER': 'Sonstiges'
+        };
+
+        const dayCount = calculateDaysBetween(absence.startDate, absence.endDate);
+
+        let statusText = 'Unbekannt';
+        let statusColor = '#666'; // Standardfarbe für unbekannt
+
+        if (absence.status === 'APPROVED') {
+            statusText = 'Genehmigt';
+            statusColor = '#28a745'; // Grün
+        } else if (absence.status === 'REJECTED') {
+            statusText = 'Abgelehnt';
+            statusColor = '#dc3545'; // Rot
+        } else if (absence.status === 'PENDING') {
+            statusText = 'Ausstehend';
+            statusColor = '#ffc107'; // Gelb
+        }
+
+        let processedByDisplay = '-'; // Standardwert
+        if (absence && absence.processedByName) { // Prüfen, ob 'processedByName' existiert und einen Wert hat
+            processedByDisplay = absence.processedByName;
+        }
+
+        html += `<tr>
+                    <td>${typeLabels[absence.type] || absence.type}</td>
+                    <td>${formatDate(absence.startDate)}</td>
+                    <td>${formatDate(absence.endDate)}</td>
+                    <td>${dayCount}</td>
+                    <td><span style="color: ${statusColor}">${statusText}</span></td>
+                    <td>${processedByDisplay}</td>
+                    <td>${absence.firstName || ''} ${absence.lastName || ''}</td>
+                </tr>`;
+    });
+    html += '</tbody></table>';
+    return html;
+}
+
+function formatPendingAbsencesTableForApproval(absences) {
+    if (!absences || absences.length === 0) {
+        return '<p>Keine ausstehenden Abwesenheitsanträge gefunden.</p>';
+    }
+    absences.sort((a, b) => new Date(a.startDate) - new Date(b.startDate)); // Älteste zuerst
+
+    let html = `<table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Antragsteller</th>
+                      <th>Typ</th>
+                      <th>Von</th>
+                      <th>Bis</th>
+                      <th>Tage</th>
+                      <th>Status</th>
+                      <th>Aktionen</th>
+                    </tr>
+                  </thead>
+                  <tbody>`;
+
+    absences.forEach(absence => {
+        const typeLabels = {
             'VACATION': 'Urlaub', 'ILLNESS': 'Krankheit', 'HOME_OFFICE': 'Home Office',
             'TRAINING': 'Fortbildung', 'PUBLIC_HOLIDAY': 'Feiertag',
             'UNPAID_LEAVE': 'Unbezahlter Urlaub', 'SPECIAL_LEAVE': 'Sonderurlaub', 'OTHER': 'Sonstiges'
         };
         const dayCount = calculateDaysBetween(absence.startDate, absence.endDate);
+        const applicantName = `${absence.firstName || ''} ${absence.lastName || ''}`.trim() || absence.email || 'Unbekannt';
+
+        // Für diese Tabelle ist der Status immer "Ausstehend"
+        const statusText = 'Ausstehend';
+        const statusColor = '#ffc107';
+
         html += `<tr>
-                  <td>${typeLabels[absence.type] || absence.type}</td>
-                  <td>${formatDate(absence.startDate)}</td>
-                  <td>${formatDate(absence.endDate)}</td>
-                  <td>${dayCount}</td>
-                  <td><span style="color: ${absence.approved ? '#28a745' : '#ffc107'}">${absence.approved ? 'Genehmigt' : (absence.approved === false ? 'Abgelehnt' : 'Ausstehend')}</span></td>
-                  <td>${absence.approverName || '-'}</td>
-                  <td>${absence.firstName || ''} ${absence.lastName || ''}</td>
-              </tr>`;
+                   <td>${applicantName}</td>
+                   <td>${typeLabels[absence.type] || absence.type}</td>
+                   <td>${formatDate(absence.startDate)}</td>
+                   <td>${formatDate(absence.endDate)}</td>
+                   <td>${dayCount}</td>
+                   <td><span style="color: ${statusColor}">${statusText}</span></td>
+                   <td class="actions-cell">
+                       <button class="btn btn-success btn-small" onclick="approveAbsenceRequest(${absence.id})">Genehmigen</button>
+                       <button class="btn btn-danger btn-small" onclick="rejectAbsenceRequest(${absence.id})" style="margin-left:5px;">Ablehnen</button>
+                   </td>
+                 </tr>`;
     });
     html += '</tbody></table>';
     return html;

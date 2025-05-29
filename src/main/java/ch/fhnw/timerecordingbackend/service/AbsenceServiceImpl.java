@@ -3,6 +3,7 @@ package ch.fhnw.timerecordingbackend.service;
 import ch.fhnw.timerecordingbackend.model.Absence;
 import ch.fhnw.timerecordingbackend.model.SystemLog;
 import ch.fhnw.timerecordingbackend.model.User;
+import ch.fhnw.timerecordingbackend.model.enums.AbsenceStatus;
 import ch.fhnw.timerecordingbackend.model.enums.AbsenceType;
 import ch.fhnw.timerecordingbackend.repository.AbsenceRepository;
 import ch.fhnw.timerecordingbackend.repository.SystemLogRepository;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -237,22 +239,39 @@ public class AbsenceServiceImpl implements AbsenceService{
 
     @Override
     public List<Absence> findApprovedAbsences() {
-        return absenceRepository.findByApprovedTrue();
+        return absenceRepository.findByStatus(AbsenceStatus.APPROVED);
     }
 
     @Override
-    public List<Absence> findPendingAbsences() {
-        return absenceRepository.findByApprovedFalse();
+    public List<Absence> findPendingAbsences(User currentUser) {
+        if (currentUser == null) {
+            return Collections.emptyList();
+        }
+
+        if (currentUser.hasRole("ADMIN")) {
+            return absenceRepository.findByStatus(AbsenceStatus.PENDING);
+        } else if (currentUser.hasRole("MANAGER")) {
+            List<User> directReports = userRepository.findByManager(currentUser);
+            if (directReports == null || directReports.isEmpty()) {
+                return Collections.emptyList();
+            }
+            return absenceRepository.findByUserInAndStatus(directReports, AbsenceStatus.PENDING);
+        }
+        return Collections.emptyList();
     }
 
     @Override
     public List<Absence> findApprovedAbsencesByUser(User user) {
-        return absenceRepository.findByUserAndApprovedTrue(user);
+        return absenceRepository.findByUserAndStatus(user, AbsenceStatus.APPROVED);
     }
 
     @Override
     public List<Absence> findPendingAbsencesByUser(User user) {
-        return absenceRepository.findByUserAndApprovedFalse(user);
+        return absenceRepository.findByUserAndStatus(user, AbsenceStatus.PENDING);
+    }
+
+    public List<Absence> findRejectedAbsencesByUser(User user) {
+        return absenceRepository.findByUserAndStatus(user, AbsenceStatus.REJECTED);
     }
 
     @Override

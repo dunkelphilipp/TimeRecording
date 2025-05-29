@@ -1,14 +1,10 @@
 package ch.fhnw.timerecordingbackend.controller;
 
-import ch.fhnw.timerecordingbackend.dto.absence.AbsenceResponse;
 import ch.fhnw.timerecordingbackend.dto.admin.UserRegistrationRequest;
 import ch.fhnw.timerecordingbackend.dto.admin.UserResponse;
-import ch.fhnw.timerecordingbackend.dto.time.TimeEntryResponse;
 import ch.fhnw.timerecordingbackend.model.Role;
 import ch.fhnw.timerecordingbackend.model.User;
 import ch.fhnw.timerecordingbackend.model.enums.UserStatus;
-import ch.fhnw.timerecordingbackend.service.AbsenceService;
-import ch.fhnw.timerecordingbackend.service.TimeEntryService;
 import ch.fhnw.timerecordingbackend.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,8 +33,6 @@ public class AdminController {
 
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
-    private final TimeEntryService timeEntryService;
-    private final AbsenceService absenceService;
 
     /**
      * Konstruktor für AdminController
@@ -222,82 +216,6 @@ public class AdminController {
                 "temporaryPassword", tempPassword,
                 "userId", id
         ));
-    }
-
-    /**
-     * Gibt eine Liste aller TimeEntries zurück
-     * @return
-     */
-    @GetMapping("/time-entries")
-    public ResponseEntity<Map<String, List<TimeEntryResponse>>> getAllTimeEntries() {
-        List<TimeEntryResponse> entries = timeEntryService.findAllTimeEntries(); // Neue Methode im TimeEntryService
-        return ResponseEntity.ok(Map.of("entries", entries));
-    }
-
-    /**
-     * Gibt eine Liste TimeEntries eines Users zurück
-     * @param userId
-     * @return
-     */
-    @GetMapping("/time-entries/user/{userId}")
-    public ResponseEntity<Map<String, List<TimeEntryResponse>>> getTimeEntriesByUserId(@PathVariable Long userId) {
-        List<TimeEntryResponse> entries = timeEntryService.getUserTimeEntries(userId);
-        return ResponseEntity.ok(Map.of("entries", entries));
-    }
-
-    /**
-     * Gibt eine Liste aller Absences zurück
-     * @return
-     */
-    @GetMapping("/absences")
-    public ResponseEntity<Map<String, List<AbsenceResponse>>> getAllAbsences() {
-        List<AbsenceResponse> absences = absenceService.findAllAbsences().stream() // Konvertierung
-                .map(this::convertToAbsenceResponse) // Konvertierung
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(Map.of("absences", absences));
-    }
-
-    /**
-     * Gibt eine Liste Absences eines Users zurück
-     * @param userId
-     * @return
-     */
-    @GetMapping("/absences/user/{userId}")
-    public ResponseEntity<Map<String, List<AbsenceResponse>>> getAbsencesByUserId(@PathVariable Long userId) {
-        User user = userService.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("Benutzer nicht gefunden mit ID: " + userId));
-        List<AbsenceResponse> absences = absenceService.findByUser(user).stream() // Konvertierung
-                .map(this::convertToAbsenceResponse) // Konvertierung
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(Map.of("absences", absences));
-    }
-
-    /**
-     * Konvertiert ein Absence-Objekt in ein AbsenceResponse-DTO
-     * @param absence
-     * @return AbsenceResponse-DTO mit Daten aus dem Absence-Objekt
-     */
-    private AbsenceResponse convertToAbsenceResponse(ch.fhnw.timerecordingbackend.model.Absence absence) {
-        AbsenceResponse response = new AbsenceResponse();
-        response.setId(absence.getId());
-        response.setStartDate(absence.getStartDate());
-        response.setEndDate(absence.getEndDate());
-        response.setType(absence.getType());
-        response.setApproved(absence.isApproved());
-        response.setCreatedAt(absence.getCreatedAt());
-        response.setUpdatedAt(absence.getUpdatedAt());
-
-        if (absence.getUser() != null) {
-            response.setUserId(absence.getUser().getId());
-            response.setFirstName(absence.getUser().getFirstName());
-            response.setLastName(absence.getUser().getLastName());
-            response.setEmail(absence.getUser().getEmail());
-        }
-        if (absence.getApprover() != null) {
-            response.setApproverId(absence.getApprover().getId());
-            response.setApproverName(absence.getApprover().getFullName());
-        }
-        return response;
     }
 
     /**

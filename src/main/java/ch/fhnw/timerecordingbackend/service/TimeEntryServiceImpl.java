@@ -297,18 +297,6 @@ public class TimeEntryServiceImpl implements TimeEntryService {
     }
 
     /**
-     * Alle TimeEntries finden
-     * @return
-     */
-    @Override
-    public List<TimeEntryResponse> findAllTimeEntries() { // NEUE METHODE
-        List<TimeEntry> entries = timeEntryRepository.findAll();
-        return entries.stream()
-                .map(this::convertToResponse)
-                .collect(Collectors.toList());
-    }
-
-    /**
      * Hilfsmethoden
      */
 
