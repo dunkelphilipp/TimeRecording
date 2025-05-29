@@ -31,6 +31,7 @@ public class TimeEntryController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("@timeEntryServiceImpl.isOwnerOfTimeEntry(#id) or hasAuthority('ADMIN')")
     public ResponseEntity<?> updateTimeEntry(
             @PathVariable Long id,
             @Valid @RequestBody TimeEntryRequest timeEntryRequest) {
