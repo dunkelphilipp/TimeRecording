@@ -153,7 +153,10 @@ async function openCreateUserModal() {
     if (errorDiv) errorDiv.style.display = 'none';
 
     const newUserRoleSelect = document.getElementById('newUserRole');
+    const newUserParentManagerSelect = document.getElementById('newUserParentManager'); // Neuer Manager Select
+
     try {
+        // Rollen laden
         const allRolesResponse = await apiCall('/api/admin/roles');
         if (newUserRoleSelect) {
             newUserRoleSelect.innerHTML = '';
@@ -166,12 +169,30 @@ async function openCreateUserModal() {
                 });
             }
         }
+
+        // Manager laden (Benutzer mit Rolle MANAGER oder ADMIN)
+        const allUsersResponse = await apiCall('/api/admin/users');
+        if (newUserParentManagerSelect) {
+            newUserParentManagerSelect.innerHTML = '<option value="">Kein direkter Manager</option>'; // Standardauswahl
+            if (allUsersResponse && Array.isArray(allUsersResponse)) {
+                allUsersResponse.forEach(user => {
+                    if (user.roles && (user.roles.includes('MANAGER') || user.roles.includes('ADMIN'))) {
+                        const option = document.createElement('option');
+                        option.value = user.id;
+                        option.textContent = `${user.firstName} ${user.lastName} (${user.email})`;
+                        newUserParentManagerSelect.appendChild(option);
+                    }
+                });
+            }
+        }
+
     } catch (error) {
+        const msg = 'Fehler beim Laden der Initialdaten für neuen Benutzer: ' + (error.message || "Unbekannt");
         if (errorDiv) {
-            errorDiv.textContent = 'Fehler beim Laden der Rollen: ' + (error.message || "Unbekannt");
+            errorDiv.textContent = msg;
             errorDiv.style.display = 'block';
         } else {
-            showError('Fehler beim Laden der Rollen für neuen Benutzer.');
+            showError(msg);
         }
     }
     openModal('createUserModal');
@@ -193,6 +214,17 @@ async function showUserDetails(userId) {
         document.getElementById('detailUserEmail').textContent = user.email;
         document.getElementById('detailUserStatus').textContent = user.status ? String(user.status) : (user.active ? 'Aktiv' : 'Inaktiv');
         document.getElementById('detailUserPlannedHours').textContent = user.plannedHoursPerDay ? user.plannedHoursPerDay.toFixed(1) : 'N/A';
+
+        // Manager-Informationen anzeigen
+        const managerSpan = document.getElementById('detailUserDirectManager');
+        if (managerSpan) {
+            if (user.managerName) { // Prüfen, ob managerName vorhanden ist
+                managerSpan.textContent = user.managerName;
+            } else {
+                managerSpan.textContent = 'Kein Manager zugewiesen';
+            }
+        }
+
         document.getElementById('detailUserCreatedAt').textContent = formatDateTimeDisplay(user.createdAt);
         document.getElementById('detailUserUpdatedAt').textContent = formatDateTimeDisplay(user.updatedAt);
 
@@ -347,13 +379,12 @@ async function viewPasswordResetRequests() {
             showWarning("System-Logs konnten nicht geladen werden. Passwort-Reset-Anfragen können nicht angezeigt werden.");
         }
     } catch (error) {
-        // Der Fehler "log is not defined" wird hier abgefangen.
         console.error("Fehlerdetails in viewPasswordResetRequests:", error); // Zusätzliches Logging des Fehlers selbst
         showError('Fehler beim Laden der Passwort-Reset-Anfragen: ' + (error.message || "Unbekannt"));
     }
 }
 
-// Die Funktion handleResetPasswordFromAdminView (mit dem erweiterten Logging für den confirm-Dialog)
+// Die Funktion handleResetPasswordFromAdminView
 async function handleResetPasswordFromAdminView(userId, userEmail, logId) {
     console.log(`[DEBUG Admin.js] handleResetPasswordFromAdminView: Start.`);
     console.log(`[DEBUG Admin.js] Übergebene userId: ${userId} (Typ: ${typeof userId}), userEmail: ${userEmail}, logId: ${logId}`); // Wichtig!
@@ -367,7 +398,7 @@ async function handleResetPasswordFromAdminView(userId, userEmail, logId) {
     console.log(`[DEBUG Admin.js] Parsed numUserId: ${numUserId} (Typ: ${typeof numUserId})`); // Wichtig!
 
     const confirmMsg = `Möchten Sie das Passwort für ${userEmail} (ID: ${numUserId}) wirklich zurücksetzen? Der Benutzer wird darüber nicht automatisch benachrichtigt.`;
-    //
+
     let userConfirmed;
     try {
         userConfirmed = confirm(confirmMsg);
@@ -387,6 +418,7 @@ async function handleResetPasswordFromAdminView(userId, userEmail, logId) {
             if (response && response.temporaryPassword) {
                 showSuccess(`Passwort für ${userEmail || `ID ${numUserId}`} erfolgreich zurückgesetzt. Temporäres Passwort: <strong>${response.temporaryPassword}</strong>. Bitte teilen Sie dieses Passwort dem Benutzer sicher mit.`);
                 console.log(`[DEBUG] Passwort erfolgreich zurückgesetzt für User ID ${numUserId}. Temporäres Passwort: ${response.temporaryPassword}`);
+                alert(`Das temporäre Passwort für ${userEmail || `ID ${numUserId}`} lautet: ${response.temporaryPassword}\nBitte teilen Sie es dem Benutzer sicher mit.`);
                 viewPasswordResetRequests();
             } else {
                 showError('Passwort-Reset durchgeführt, aber kein temporäres Passwort erhalten oder Antwort war unerwartet.');
@@ -475,6 +507,7 @@ async function handleCreateUserSubmit(event) {
     const email = document.getElementById('newEmail').value;
     const role = document.getElementById('newUserRole').value;
     const plannedHours = parseFloat(document.getElementById('newPlannedHours').value);
+    const managerId = document.getElementById('newUserParentManager').value; // Manager ID auslesen
 
     const feedbackDiv = document.getElementById('createUserFeedback');
     const errorDiv = document.getElementById('createUserError');
@@ -493,7 +526,8 @@ async function handleCreateUserSubmit(event) {
             lastName: lastName,
             email: email,
             role: role,
-            plannedHoursPerDay: plannedHours
+            plannedHoursPerDay: plannedHours,
+            managerId: managerId ? parseInt(managerId) : null // managerId zum Payload hinzufügen
         };
         const response = await apiCall('/api/admin/users', { method: 'POST', body: userData });
 

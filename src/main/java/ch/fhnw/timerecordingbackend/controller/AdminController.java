@@ -31,7 +31,6 @@ import java.util.stream.Collectors;
  * API Endpunkte für Vewaltung von Benutzern
  * @author PD
  * Code von anderen Teammitgliedern oder Quellen wird durch einzelne Kommentare deklariert
- * @version 1.2 - ADMIN Authority bearbeitet
  */
 @RestController
 @RequestMapping("/api/admin")
@@ -92,7 +91,7 @@ public class AdminController {
 
     /**
      * Empfängt Regestrierungsanfrage
-     * @return
+     * @return Liste mit User Attributen
      */
     @GetMapping("/registration-requests/pending")
     public ResponseEntity<List<Map<String, Object>>> getPendingRegistrationRequests() {
@@ -130,14 +129,17 @@ public class AdminController {
         // Passwort setzten
         String passwordToEncode = request.getPassword();
         if (passwordToEncode == null || passwordToEncode.isEmpty()) {
-            passwordToEncode = request.getLastName().toLowerCase();
+            passwordToEncode = request.getLastName().toLowerCase(); // Standardpasswort nachname
         }
         user.setPassword(passwordEncoder.encode(passwordToEncode));
 
-        User createdUser = userService.createUser(user, request.getRole());
+        // Manager ID aus dem Request holen
+        Long managerId = request.getManagerId();
+
+        User createdUser = userService.createUser(user, request.getRole(), managerId); // managerId übergeben
         // Ausgabe des Passworts zur Kontrolle
         UserResponse response = convertToUserResponse(createdUser);
-        response.setTemporaryPassword(passwordToEncode); // Das unverschlüsselte Passwort für die Anzeige
+        response.setTemporaryPassword(passwordToEncode); // Das unverschlüsselte Passwort anzeigen
 
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
@@ -290,7 +292,10 @@ public class AdminController {
         ));
     }
 
-    // NEUER ENDPUNKT zum Abrufen von System-Logs
+    /**
+     * System Logs abrufen
+     * @return
+     */
     @GetMapping("/logs")
     public ResponseEntity<?> getSystemLogs() {
         List<SystemLog> logs = systemLogRepository.findAll(Sort.by(Sort.Direction.DESC, "timestamp"));
@@ -324,6 +329,11 @@ public class AdminController {
                 .collect(Collectors.toSet()));
         response.setCreatedAt(user.getCreatedAt());
         response.setUpdatedAt(user.getUpdatedAt());
+        // Manager Info
+        if (user.getManager() != null) {
+            response.setManagerId(user.getManager().getId());
+            response.setManagerName(user.getManager().getFullName());
+        }
         return response;
     }
 }

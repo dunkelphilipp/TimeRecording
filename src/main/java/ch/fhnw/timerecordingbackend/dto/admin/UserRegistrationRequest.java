@@ -9,7 +9,6 @@ import jakarta.validation.constraints.Size;
  * DTO für Anfragen zum Registrieren eines Benutzers
  * @author PD
  * Code von anderen Teammitgliedern oder Quellen wird durch einzelne Kommentare deklariert
- * @version 1.0
  * Quelle: https://medium.com/paysafe-bulgaria/springboot-dto-validation-good-practices-and-breakdown-fee69277b3b0
  */
 public class UserRegistrationRequest {
@@ -36,6 +35,8 @@ public class UserRegistrationRequest {
     @NotNull(message = "Geplante Stunden pro Tag darf nicht null sein")
     // Der einfachheit vorerst 8.0 definiert
     private double plannedHoursPerDay = 8.0;
+
+    private Long managerId;
 
     /**
      * Getter und Setter
@@ -86,6 +87,14 @@ public class UserRegistrationRequest {
 
     public void setPlannedHoursPerDay(double plannedHoursPerDay) {
         this.plannedHoursPerDay = plannedHoursPerDay;
+    }
+
+    public Long getManagerId() { // Getter für managerId
+        return managerId;
+    }
+
+    public void setManagerId(Long managerId) { // Setter für managerId
+        this.managerId = managerId;
     }
 
     @Override

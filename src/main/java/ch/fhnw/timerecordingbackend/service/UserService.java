@@ -12,7 +12,6 @@ import java.util.Optional;
  * UserService Interface
  * @author PD
  * Code von anderen Teammitgliedern oder Quellen wird durch einzelne Kommentare deklariert
- * @version 1.0
  */
 public interface UserService {
 
@@ -46,9 +45,10 @@ public interface UserService {
      * Neuen User erstellen und mit Rolle verknüpfen
      * @param user
      * @param roleName
+     * @param managerId (Optional) ID des zuzuweisenden Managers
      * @return neuer User mit Rolle und ID
      */
-    User createUser(User user, String roleName);
+    User createUser(User user, String roleName, Long managerId);
 
     /**
      * User aktualisieren
@@ -142,6 +142,6 @@ public interface UserService {
      * @return Liste mit allen Rollen
      */
     List<Role> getAllRoles();
-    boolean requestPasswordReset(String email); // <-- Stelle sicher, dass diese Zeile genau so existiert
+    boolean requestPasswordReset(String email);
 
 }
