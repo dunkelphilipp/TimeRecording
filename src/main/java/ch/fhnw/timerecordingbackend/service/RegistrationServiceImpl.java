@@ -14,6 +14,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -53,12 +54,17 @@ public class RegistrationServiceImpl implements RegistrationService {
             throw new ValidationException("Ein Benutzer mit dieser E-Mail existiert bereits.");
         }
 
+        List<String> allowedRequestedRoles = Arrays.asList("EMPLOYEE", "MANAGER");
+        if (!allowedRequestedRoles.contains(requestDto.getRole().toUpperCase())) {
+            throw new ValidationException("Ungültige Rolle angefordert: " + requestDto.getRole() + ". Erlaubte Rollen sind: EMPLOYEE, MANAGER.");
+        }
+
         try {
             Registration newRequest = new Registration();
             newRequest.setFirstName(requestDto.getFirstName().trim());
             newRequest.setLastName(requestDto.getLastName().trim());
             newRequest.setEmail(requestDto.getEmail().trim().toLowerCase());
-            newRequest.setPosition(requestDto.getPosition() != null ? requestDto.getPosition().trim() : null);
+            newRequest.setRequestedRole(requestDto.getRole().toUpperCase());
             newRequest.setStatus("PENDING");
             newRequest.setCreatedAt(LocalDateTime.now());
 
@@ -114,6 +120,12 @@ public class RegistrationServiceImpl implements RegistrationService {
             throw new ValidationException("Anfrage ist nicht ausstehend und kann nicht genehmigt werden.");
         }
 
+        List<String> allowedAssignedRoles = Arrays.asList("EMPLOYEE", "MANAGER");
+        String roleToAssign = request.getRequestedRole().toUpperCase(); // Die angeforderte Rolle
+        if (!allowedAssignedRoles.contains(roleToAssign)) {
+            throw new ValidationException("Angeforderte Rolle '" + roleToAssign + "' ist für die automatische Zuweisung über die Registrierung nicht erlaubt. Manuelle Zuweisung durch Admin erforderlich.");
+        }
+
         User newUser = new User();
         newUser.setFirstName(request.getFirstName());
         newUser.setLastName(request.getLastName());
@@ -122,7 +134,7 @@ public class RegistrationServiceImpl implements RegistrationService {
         newUser.setPlannedHoursPerDay(8.0);
         newUser.setManager(request.getManager());
 
-        User createdUser = userService.createUser(newUser, "EMPLOYEE");
+        User createdUser = userService.createUser(newUser, roleToAssign);
 
         request.setStatus("APPROVED");
         registrationRequestRepository.save(request);

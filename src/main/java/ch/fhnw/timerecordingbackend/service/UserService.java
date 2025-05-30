@@ -39,7 +39,7 @@ public interface UserService {
      * User anhand der E-Mail finden
      * @param email
      * @return Optional mit User, wenn gefunden, sonst Optional.empty()
-    */
+     */
     Optional<User> findByEmail(String email);
 
     /**
@@ -142,4 +142,6 @@ public interface UserService {
      * @return Liste mit allen Rollen
      */
     List<Role> getAllRoles();
+    boolean requestPasswordReset(String email); // <-- Stelle sicher, dass diese Zeile genau so existiert
+
 }

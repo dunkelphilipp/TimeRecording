@@ -25,11 +25,11 @@ public class Registration {
     @Column(nullable = false, unique = true, length = 100)
     private String email;
 
-    @Column(length = 100)
-    private String position; // Optional
+    @Column(name = "requested_role", nullable = false, length = 50)
+    private String requestedRole;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "manager_id") // Manager, an den die Anfrage gesendet wird
+    @JoinColumn(name = "manager_id")
     private User manager;
 
     @Column(nullable = false)
@@ -43,11 +43,11 @@ public class Registration {
         this.createdAt = LocalDateTime.now();
     }
 
-    public Registration(String firstName, String lastName, String email, String position, User manager) { // KONSTRUKTORNAME GEÄNDERT
+    public Registration(String firstName, String lastName, String email, String requestedRole, User manager) { // KONSTRUKTORNAME GEÄNDERT
         this.firstName = firstName;
         this.lastName = lastName;
         this.email = email;
-        this.position = position;
+        this.requestedRole = requestedRole;
         this.manager = manager;
         this.createdAt = LocalDateTime.now();
         this.status = "PENDING";
@@ -86,12 +86,12 @@ public class Registration {
         this.email = email;
     }
 
-    public String getPosition() {
-        return position;
+    public String getRequestedRole() {
+        return requestedRole;
     }
 
-    public void setPosition(String position) {
-        this.position = position;
+    public void setRequestedRole(String requestedRole) {
+        this.requestedRole = requestedRole;
     }
 
     public User getManager() {

@@ -28,8 +28,8 @@ public class RegistrationRequest {
     @Size(min = 5, max = 255, message = "E-Mail muss zwischen 5 und 255 Zeichen lang sein")
     private String email;
 
-    @Size(max = 100, message = "Position darf maximal 100 Zeichen lang sein")
-    private String position; // Optionales Feld
+    @NotBlank(message = "Rolle darf nicht leer sein")
+    private String role;
 
     private Long managerId; // Optionales Feld
 
@@ -58,12 +58,12 @@ public class RegistrationRequest {
         this.email = email;
     }
 
-    public String getPosition() {
-        return position;
+    public String getRole() {
+        return role;
     }
 
-    public void setPosition(String position) {
-        this.position = position;
+    public void setRole(String role) {
+        this.role = role;
     }
 
     public Long getManagerId() {
@@ -80,7 +80,7 @@ public class RegistrationRequest {
                 "firstName='" + firstName + '\'' +
                 ", lastName='" + lastName + '\'' +
                 ", email='" + email + '\'' +
-                ", position='" + position + '\'' +
+                ", role='" + role + '\'' +
                 ", managerId=" + managerId +
                 '}';
     }

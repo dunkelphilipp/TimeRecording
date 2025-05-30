@@ -2,7 +2,6 @@ package ch.fhnw.timerecordingbackend.controller;
 
 import ch.fhnw.timerecordingbackend.dto.admin.UserRegistrationRequest;
 import ch.fhnw.timerecordingbackend.dto.admin.UserResponse;
-import ch.fhnw.timerecordingbackend.dto.registration.RegistrationRequest;
 import ch.fhnw.timerecordingbackend.model.Registration;
 import ch.fhnw.timerecordingbackend.model.Role;
 import ch.fhnw.timerecordingbackend.model.User;
@@ -18,11 +17,14 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import ch.fhnw.timerecordingbackend.model.SystemLog;
+import ch.fhnw.timerecordingbackend.repository.SystemLogRepository;
+import org.springframework.data.domain.Sort;
 
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
  * REST Controller für Administratoren
@@ -41,10 +43,9 @@ public class AdminController {
     private final PasswordEncoder passwordEncoder;
     private final RegistrationService registrationService;
 
-    /**
-     * Konstruktor für AdminController
-     * @param userService
-     */
+    @Autowired
+    private SystemLogRepository systemLogRepository;
+
     @Autowired
     public AdminController(UserService userService, PasswordEncoder passwordEncoder, RegistrationService registrationService) {
         this.userService = userService;
@@ -58,12 +59,10 @@ public class AdminController {
      */
     @GetMapping("/users")
     public ResponseEntity<List<UserResponse>> getAllUsers() {
-
         List<User> users = userService.findAllUsers();
         List<UserResponse> responses = users.stream()
                 .map(this::convertToUserResponse)
                 .collect(Collectors.toList());
-
         return ResponseEntity.ok(responses);
     }
 
@@ -104,7 +103,7 @@ public class AdminController {
                     map.put("firstName", request.getFirstName());
                     map.put("lastName", request.getLastName());
                     map.put("email", request.getEmail());
-                    map.put("position", request.getPosition());
+                    map.put("requestedRole", request.getRequestedRole());
                     map.put("managerName", request.getManager() != null ? request.getManager().getFullName() : "N/A");
                     map.put("createdAt", request.getCreatedAt());
                     map.put("status", request.getStatus());
@@ -130,15 +129,14 @@ public class AdminController {
         // Passwort setzten
         String passwordToEncode = request.getPassword();
         if (passwordToEncode == null || passwordToEncode.isEmpty()) {
-            passwordToEncode = request.getLastName().toLowerCase(); // Nachname als Standardpasswort
+            passwordToEncode = request.getLastName().toLowerCase();
         }
         user.setPassword(passwordEncoder.encode(passwordToEncode));
 
         User createdUser = userService.createUser(user, request.getRole());
-
         // Ausgabe des Passworts zur Kontrolle
         UserResponse response = convertToUserResponse(createdUser);
-        response.setTemporaryPassword(passwordToEncode);
+        response.setTemporaryPassword(passwordToEncode); // Das unverschlüsselte Passwort für die Anzeige
 
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
@@ -158,7 +156,6 @@ public class AdminController {
         user.setPlannedHoursPerDay(request.getPlannedHoursPerDay());
 
         User updatedUser = userService.updateUser(id, user);
-
         return ResponseEntity.ok(convertToUserResponse(updatedUser));
     }
 
@@ -221,7 +218,7 @@ public class AdminController {
      * @param id
      * @return ResponseEntity mit dem aktivierten UserResponse-DTO
      */
-    @DeleteMapping("/users/{id}/activate")
+    @PatchMapping("/users/{id}/activate")
     public ResponseEntity<UserResponse> activateUser(@PathVariable Long id) {
         User activatedUser = userService.activateUser(id);
         return ResponseEntity.ok(convertToUserResponse(activatedUser));
@@ -259,7 +256,7 @@ public class AdminController {
      */
     @DeleteMapping("/users/{id}/roles")
     public ResponseEntity<UserResponse> removeRoleFromUser(@PathVariable Long id, @RequestParam String roleName) {
-        User updatedUser = userService.removeRoleFromUser(id, roleName); // <-- Korrigierter Methodenname
+        User updatedUser = userService.removeRoleFromUser(id, roleName);
         return ResponseEntity.ok(convertToUserResponse(updatedUser));
     }
 
@@ -274,7 +271,6 @@ public class AdminController {
         List<UserResponse> responses = users.stream()
                 .map(this::convertToUserResponse)
                 .collect(Collectors.toList());
-
         return ResponseEntity.ok(responses);
     }
 
@@ -291,6 +287,13 @@ public class AdminController {
                 "temporaryPassword", tempPassword,
                 "userId", id
         ));
+    }
+
+    // NEUER ENDPUNKT zum Abrufen von System-Logs
+    @GetMapping("/logs")
+    public ResponseEntity<?> getSystemLogs() {
+        List<SystemLog> logs = systemLogRepository.findAll(Sort.by(Sort.Direction.DESC, "timestamp"));
+        return ResponseEntity.ok(Map.of("logs", logs));
     }
 
     /**
@@ -316,12 +319,10 @@ public class AdminController {
         // Rollen Name extrahieren und in Set speichern, keine Mehrfachnennung möglich
         // Quelle ChatGPT.com
         response.setRoles(user.getRoles().stream()
-                .map(role -> role.getName())
+                .map(Role::getName)
                 .collect(Collectors.toSet()));
-
         response.setCreatedAt(user.getCreatedAt());
         response.setUpdatedAt(user.getUpdatedAt());
-
         return response;
     }
 }

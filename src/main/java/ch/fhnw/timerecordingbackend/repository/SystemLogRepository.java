@@ -86,4 +86,10 @@ public interface SystemLogRepository extends JpaRepository<SystemLog, Long> {
      * @return
      */
     long deleteByTimestampBefore(LocalDateTime timestamp);
+
+    List<SystemLog> findByUserIdAndActionAndProcessedStatusIsNullOrderByTimestampDesc(Long userId, String action);
+
+    List<SystemLog> findByUserIdAndActionOrderByTimestampDesc(Long userId, String action);
+    List<SystemLog> findByUserIdOrderByTimestampDesc(Long userId);
+    List<SystemLog> findByUserIdAndActionAndProcessedStatusOrderByTimestampDesc(Long userId, String action, String processedStatus);
 }
